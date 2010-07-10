@@ -5,14 +5,17 @@ import os
 
 import gevent
 from gevent import socket
+from gevent.select import select
 
 from schranz import util
 from schranz.modules import process_command
 
 class SchranzDaemon(object):
-    def __init__(self):
+    def __init__(self, socket_file='schranzd.sock'):
         self.queue = []
         self.workers = []
+        self.running = False
+        self.socket_file = socket_file
 
     def process_connection(self, conn):
         current = gevent.getcurrent()
@@ -64,19 +67,28 @@ class SchranzDaemon(object):
         self.workers.remove(current)
 
     def run(self):
+        if os.path.exists(self.socket_file):
+            os.remove(self.socket_file)
+
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.bind('schranzd.sock')
+        sock.bind(self.socket_file)
         sock.listen(1)
+        fd = sock.fileno()
+        os.chmod(self.socket_file, 0666)
+        self.running = True
         try:
-            while True:
-                conn, addr = sock.accept()
-                gevent.spawn(self.process_connection, conn)
-        except:
-            raise
+            while self.running:
+                if select([fd], [], [], 0.5)[0]:
+                    conn, addr = sock.accept()
+                    gevent.spawn(self.process_connection, conn)
         finally:
-            try:
-                gevent.joinall(self.workers, 5)
-                gevent.killall(self.workers)
-                os.remove('schranzd.sock')
-            except:
-                pass
+            sock.close()
+            gevent.joinall(self.workers, 5)
+            gevent.killall(self.workers)
+            self.workers = []
+            self.running = False
+
+    def stop(self):
+        if self.running:
+            self.running = False
+            gevent.sleep(1)

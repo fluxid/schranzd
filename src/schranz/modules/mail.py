@@ -3,42 +3,28 @@
 
 import os.path
 import re
-import shutil
 import subprocess
 
-DOMAIN_PATH = '/etc/dovecot/domains'
-MAILDIR_PATH = '~/mail'
-ACCOUNTS_FILE = '.mailaccounts2'
+MAILDIR_PATH = '~/schranz/mail'
+CONFIG_FILE = 'schranz/mailaccounts'
 
-ALIAS_FILE = '/etc/postfix/alias_maps'
-ACCOUNT_FILE = '/etc/postfix/account_maps'
-CATCHALL_FILE = '/etc/postfix/catchall_maps'
-PASSWD_FILE = '/etc/dovecot/passwd'
-DOMAIN_FILE = '/etc/postfix/domain_maps'
+SCHRANZ_DIR = '/var/lib/schranz/mail/'
+DOMAIN_PATH = '/var/lib/schranz/mail_domains/'
 
-TMP_SUFIX = '.tmp'
-OLD_SUFIX = '.old'
+ACCOUNT_FILE = 'account_maps'
+ALIAS_FILE = 'alias_maps'
+CATCHALL_FILE = 'catchall_maps'
+DOMAIN_FILE = 'domain_maps'
+PASSWD_FILE = 'passwd'
 
-POSTMAP_BIN = '/usr/sbin/postmap'
+DEFAULT_ABUSE = 'root'
+DEFAULT_POSTMASTER = 'root'
+FORBIDDEN_USERS = ('abuse', 'postmaster')
+
 DOVECOTPW_BIN = '/usr/sbin/dovecotpw'
 
 
-CATCHALL_FILE_TMP = CATCHALL_FILE + TMP_SUFIX
-PASSWD_FILE_TMP = PASSWD_FILE + TMP_SUFIX
-DOMAIN_FILE_TMP = DOMAIN_FILE + TMP_SUFIX
-
-CATCHALL_FILE_OLD = CATCHALL_FILE + OLD_SUFIX
-PASSWD_FILE_OLD = PASSWD_FILE + OLD_SUFIX
-DOMAIN_FILE_OLD = DOMAIN_FILE + OLD_SUFIX
-
-CATCHALL_FILE_DB = CATCHALL_FILE + '.db'
-DOMAIN_FILE_DB = DOMAIN_FILE + '.db'
-CATCHALL_FILE_TMP_DB = CATCHALL_FILE + TMP_SUFIX + '.db'
-DOMAIN_FILE_TMP_DB = DOMAIN_FILE + TMP_SUFIX + '.db'
-
 RE_WS = re.compile('\s+')
-
-FORBIDDEN_USERS = ('abuse', 'postmaster')
 
 class ConfigError(Exception):
     pass
@@ -151,7 +137,7 @@ def mail_reload(context, arguments):
     errors = context['response']['errors']
     user = context['user']
 
-    config_fp = os.path.join(user.pw_dir, ACCOUNTS_FILE)
+    config_fp = os.path.join(user.pw_dir, CONFIG_FILE)
     if not os.path.isfile(config_fp):
         errors.append('No configuration file exists')
 
@@ -160,13 +146,12 @@ def mail_reload(context, arguments):
     domain_fp = os.path.join(DOMAIN_PATH, user.pw_name)
     if not os.path.isfile(domain_fp):
         errors.append('No domain file exists')
-        failed = True
     else:
         f = open(domain_fp, 'r')
-        num = 1
         for line in f.xreadlines():
             line = line.strip()
-            if not line or line.startswith('#'): continue
+            if not line or line[0] in ('#', ';'):
+                continue
             domains.add(line)
         f.close()
 
@@ -176,14 +161,64 @@ def mail_reload(context, arguments):
         # must use +=, or else we would have to replace errors from context
         errors += parser.errors
 
+    passwords = dict()
+    for key, value in parser.account_pass.iteritems():
+        try:
+            p = subprocess.Popen([DOVECOTPW_BIN, '-p', value], shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
+        except:
+            errors.append('Error when hashing password for account "%s"' % key)
+            continue
+        
+        pstdout, pstderr = p.communicate()
+        value = pstdout.strip()
+        passwords[key] = value
+
     if errors:
         return
+    
+    udir = os.path.join(SCHRANZ_DIR, user.pw_name)
+    if not os.path.exists(udir):
+        os.mkdir(udir)
 
-    print parser.catchalls
-    print parser.aliases
-    print parser.account_pass
-    print parser.accounts
-    print parser.domains
+    account_fp = os.path.join(udir, ACCOUNT_FILE)
+    f = open(account_fp, 'w')
+    for value in parser.accounts:
+        f.write('%s %s\n' % (value, value))
+    f.close()
+
+    alias_fp = os.path.join(udir, ALIAS_FILE)
+    f = open(alias_fp, 'w')
+    for value in domains:
+        f.write('abuse@%s %s\n' % (value, DEFAULT_ABUSE))
+        f.write('postmaster@%s %s\n' % (value, DEFAULT_POSTMASTER))
+    for key, value in parser.aliases.iteritems():
+        f.write('%s %s\n' % (key, value))
+    f.close()
+
+    catchall_fp = os.path.join(udir, CATCHALL_FILE)
+    f = open(catchall_fp, 'w')
+    for key, value in parser.catchalls.iteritems():
+        f.write('@%s %s\n' % (key, value))
+    f.close()
+
+    domain_fp = os.path.join(udir, DOMAIN_FILE)
+    f = open(domain_fp, 'w')
+    for value in domains:
+        f.write('%s %s\n' % (value, value))
+    f.close()
+
+    passwd_fp = os.path.join(udir, PASSWD_FILE)
+    f = open(passwd_fp, 'w')
+    for value in parser.accounts:
+        f.write('%s:%s:%d:%d::%s::userdb_mail=maildir:%s\n' % (
+            value,
+            passwords[value],
+            user.pw_uid,
+            user.pw_gid,
+            user.pw_dir,
+            os.path.join(MAILDIR_PATH, value.replace('@', '.'))
+        ))
+    f.close()
 
 MOD_NAME = 'mail'
 MOD_COMMANDS = {

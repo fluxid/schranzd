@@ -34,13 +34,13 @@ case "$1" in
 		chown "schranz:schranz" ${DIR}
 	fi
 	if start-stop-daemon ${START} -- ${PARAMS} start >/dev/null ; then
-		echo "schranzd."
+		echo "started."
 	else
 		if start-stop-daemon --test ${START} >/dev/null 2>&1; then
-			echo "(failed)."
+			echo "failed."
 			exit 1
 		else
-			echo "(already running)."
+			echo "already running."
 			exit 0
 		fi
 	fi
@@ -48,13 +48,13 @@ case "$1" in
   stop)
 	echo -n "Stopping $DESC: "
 	if start-stop-daemon ${STOP} --retry 10 >/dev/null ; then
-		echo "schranzd."
+		echo "stopped."
 	else
 		if start-stop-daemon --test ${START} >/dev/null 2>&1; then
-			echo "(not running)."
+			echo "not running."
 			exit 0
 		else
-			echo "(failed)."
+			echo "failed."
 			exit 1
 		fi
 	fi

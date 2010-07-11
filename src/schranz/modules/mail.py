@@ -28,7 +28,7 @@ DOVECOTPW_BIN = '/usr/sbin/dovecotpw'
 
 class MailConfigParser(SimpleParser):
     def __init__(self, domains):
-        super(MailConfigParser, self).__init__(self)
+        super(MailConfigParser, self).__init__()
         self.catchalls = dict() # domain: account
         self.aliases = dict() # alias: account
         self.account_pass = dict() # account: pass

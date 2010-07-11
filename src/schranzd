@@ -18,7 +18,7 @@ def main(argv):
         print >>sys.stderr, 'Could not daemonize'
         return 1
 
-    f = open('/var/run/schranz/schranz.pid', 'w')
+    f = open('/var/run/schranz/schranzd.pid', 'w')
     f.write(str(os.getpid()))
     f.close()
     

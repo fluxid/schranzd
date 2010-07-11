@@ -9,9 +9,9 @@ from schranz.util import SimpleParser, ParseError
 MAILDIR_PATH = '~/schranz/mail'
 CONFIG_FILE = 'schranz/mailaccounts'
 
-SCHRANZ_PATH = '/var/lib/schranz/'
-CONFIG_CACHE_PATH = SCHRANZ_PATH + 'mail_cache/'
-DOMAIN_PATH = SCHRANZ_PATH + 'mail_domains/'
+BASE_PATH = '/var/lib/schranz/mail/'
+CONFIG_CACHE_PATH = BASE_PATH + 'cache/'
+DOMAIN_PATH = BASE_PATH + 'domains/'
 
 ACCOUNT_FILE = 'account_maps'
 ALIAS_FILE = 'alias_maps'

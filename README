@@ -13,7 +13,6 @@ What does it support:
 What does it need:
 * rc script
 * logging, better error handling
-* utility which would merge cached users maps and passwd files into actual configuration.
 * probably code comments, docstrings, documentation, slight refactoring...
 
 Why schranz:

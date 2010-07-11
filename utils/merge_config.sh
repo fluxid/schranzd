@@ -1,9 +1,9 @@
 #!/bin/sh
 
-SCHRANZ_PATH="/var/lib/schranz/"
-CONFIG_CACHE_PATH="${SCHRANZ_PATH}mail_cache/"
-DOMAIN_PATH="${SCHRANZ_PATH}mail_domains/"
-CONFIG_PATH="${SCHRANZ_PATH}mail_config/"
+BASE_PATH="/var/lib/schranz/mail/"
+CONFIG_CACHE_PATH="${BASE_PATH}cache/"
+DOMAIN_PATH="${BASE_PATH}domains/"
+CONFIG_PATH="${BASE_PATH}config/"
 AMAVIS_FILE="/etc/amavis/conf.d/90-schranz"
 
 merge() {

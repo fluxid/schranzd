@@ -52,15 +52,14 @@ def main(argv):
             print >> sys.stderr, 'Could not daemonize: %s' % os.strerror(e.errno)
             return 1
 
-        f = open(pidfile, 'w')
         try:
+            f = open(pidfile, 'w')
             f.write(str(os.getpid()))
+            f.close()
         except EnvironmentError, e:
             # We shouldn't print anything after fork, but oh well...
             print >> sys.stderr, 'Could not write pidfile: %s' % os.strerror(e.errno)
             return 1
-        finally:
-            f.close()
 
     syslog.openlog('schranzd', syslog.LOG_PID, syslog.LOG_DAEMON)
     syslog.setlogmask(syslog.LOG_UPTO(syslog.LOG_INFO))

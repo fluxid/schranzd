@@ -1,6 +1,6 @@
 schranzd - Schranz Daemon
 
-Stupid tool I made to make mail accounts administration easier for users, with possibility for adding extentions modules for other tasks.
+Stupid tool I made to make mail accounts administration easier for users from command line, with possibility for adding extentions modules for other tasks.
 It's written quickly, a little thoughtlessly, it lacks many functionalities and really needs work and polishing.
 I made it public because maybe someone will find it useful, fork it and extend.
 
@@ -12,6 +12,54 @@ What does it support:
 
 What does it still need:
 * probably code comments, docstrings, documentation...
+* in future: use SQL db instead of files
 
 Why schranz:
 I have music genre based server naming system. My server with mail accounts is schranz.
+
+Quick install (it's made with ubuntu server in mind):
+1. install gevent and greenlet, globally
+2. create user: useradd -r -U -m -d /var/lib/schranz schranz
+3. run in repo using global python: python setup.py install --prefix=/usr/local
+4. for mail daemon:
+   mkdir -p /var/lib/schranz/mail/domains /var/lib/schranz/mail/config /var/lib/schranz/mail/cache
+   touch /etc/amavis/conf.d/90-schranz
+   chown -R schranz:schranz /var/lib/schranz/mail /etc/amavis/conf.d/90-schranz
+5. add job to crontab: /var/lib/schranz/merge_config.sh
+6. start schranzd: service schranzd start
+7. if you like it, add it to default runlevels.
+
+What does mail module do:
+When user requests it (via command: sch mail reload), config file is parsed and user's map and passwd file are created in /var/lib/schranz/mail/cache.
+
+What does cronjob do:
+1. Regenerates 90-schranz for amavisd with the list of all found domains.
+2. Merges all maps and passwd files from /var/lib/schranz/mail/cache into single ones. Maps are compiled using postmap.
+Lines which reload amavis, postfix and dovecot are now commented out because I'm checking if everything works well now before running mail system with it. When I test it, I'll reconfigure postfix and dovecot to use those maps and passwd files. This will look probably similar to this:
+For postfix:
+virtual_alias_maps = hash:/var/lib/schranz/mail/config/account_maps, hash:/var/lib/schranz/mail/config/alias_maps, hash:/var/lib/schranz/mail/config/catchall_maps
+virtual_mailbox_domains = hash:/var/lib/schranz/mail/config/domain_maps
+For dovecot:
+passdb passwd-file {
+  args = /var/lib/schranz/mail/config/passwd 
+}
+
+Configuring e-mail domains (as admin):
+For each user create /var/lib/schranz/mail/domains/USERNAME with the list of domains (; or # at the beginning of the line are comments). Only within those domains users are allowed to create mail accounts.
+
+Configuring e-mail accounts (as user):
+1. Create directory ~/schranz/mail - this will be the place for Maildir mail boxes.
+2. Edit file ~/schranz/mailaccounts (syntax below)
+3. Set permissions:
+   chmod 600 ~/schranz/mailaccounts
+   setfacl -m u:schranz:r ~/schranz/mailaccounts
+
+Syntax of mailaccounts file:
+account name@domain password
+    Creates mail account. Name can't contain dashes (-), domain must be owned by the user. If similar alias is already defined, it will be overwritten. Name cannot be one of: postmaster or abuse (those are automatically alised to root)
+
+catchall domain address
+    Creates catchall for domain. Domain must be owned by user, mail address must be already defined account or alias of the same user.
+
+alias alias address
+    Created alias for given address. It has the same restrictions as account name. Mail address must be already defined account or alias of the same user.

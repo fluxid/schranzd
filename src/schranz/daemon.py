@@ -2,6 +2,7 @@
 
 import json
 import os
+import syslog
 
 import gevent
 from gevent import socket
@@ -31,7 +32,6 @@ class SchranzDaemon(object):
             pid = pid,
         )
 
-        print 'Connection: %s %s' % (user.pw_name, pid) 
         while True:
             jdata = conn.recv(4096)
             if not jdata:
@@ -54,7 +54,8 @@ class SchranzDaemon(object):
                     process_command(context, data)
                 except:
                     import traceback
-                    traceback.print_exc()
+                    exc = traceback.format_exc()
+                    syslog.syslog(syslog.LOG_ERR, exc)
                     errors.append('Critical error while executing command.')
 
             jresponse = json.dumps(response)
@@ -80,7 +81,7 @@ class SchranzDaemon(object):
         try:
             while self.running:
                 if select([fd], [], [], 0.5)[0]:
-                    conn, addr = sock.accept()
+                    conn, _ = sock.accept()
                     gevent.spawn(self.process_connection, conn)
         finally:
             sock.close()

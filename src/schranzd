@@ -5,6 +5,7 @@ import getopt
 import os
 import signal
 import sys
+import syslog
 from traceback import print_exc
 
 from schranz.util import get_group, get_user
@@ -55,10 +56,13 @@ def main(argv):
         try:
             f.write(str(os.getpid()))
         except EnvironmentError, e:
+            # We shouldn't print anything after fork, but oh well...
             print >> sys.stderr, 'Could not write pidfile: %s' % os.strerror(e.errno)
             return 1
         finally:
             f.close()
+
+    syslog.openlog(logopt=syslog.LOG_PID, facility=syslog.LOG_DAEMON)
 
     daemon = SchranzDaemon(socket_file = socket_file)
     

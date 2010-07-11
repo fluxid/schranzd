@@ -1,15 +1,16 @@
 schranzd - Schranz Daemon
-Stupid, unfinished tool I made to make mail accounts administration easier for users, with possibility for adding extentions modules for other tasks.
+
+Stupid tool I made to make mail accounts administration easier for users, with possibility for adding extentions modules for other tasks.
 It's written quickly, a little thoughtlessly, it lacks many functionalities and really needs work and polishing.
 I made it public because maybe someone will find it useful, fork it and extend.
 
 What does it support:
 * Daemon which uses gevent to listen on UNIX socket. It reads user credentials from socket.
 * JSON-based protocol
-* mail module - it allows creating accounts for postfix+dovecot configuration with passwdfile-based authentication, along with aliases and catchalls, for multiple domains and users.
+* mail module - it allows creating accounts for postfix+dovecot+amavis configuration with passwdfile-based authentication, along with aliases and catchalls, for multiple domains and users.
+* logging to syslog
 
-What does it need:
-* logging, better error handling
+What does it still need:
 * probably code comments, docstrings, documentation...
 
 Why schranz:

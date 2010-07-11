@@ -6,12 +6,31 @@ DOMAIN_PATH="${BASE_PATH}domains/"
 CONFIG_PATH="${BASE_PATH}config/"
 AMAVIS_FILE="/etc/amavis/conf.d/90-schranz"
 
+AWK_SCRIPT='
+BEGIN {
+	ORS="";
+	print "@local_domains_acl = ( ";
+}
+{
+	if ($0 !~ /^[[:space:]]*$|^[#;]/) {
+		if (notfirst) {
+			print ", ";
+		}
+		sub(/^[[:space:]]+|[[:space:]]+$/, "");
+		print "\"" $0 "\"";
+		notfirst = 1;
+	}
+}
+END {
+	print " );\n1;\n";
+}'
+
 merge() {
 	cat ${CONFIG_CACHE_PATH}*/$1 > ${CONFIG_PATH}$1
 }
 
 if [ ${DOMAIN_PATH} -nt ${AMAVIS_DOMAIN_FILE} ]; then
-	cat ${DOMAIN_PATH}* | awk 'BEGIN{ ORS=" "; print "@local_domains_acl = ("; }{ print "\"" $0 "\""; }END{ print ");\n1;"; }' > ${AMAVIS_FILE}
+	cat ${DOMAIN_PATH}* | awk "$AWK_SCRIPT" > ${AMAVIS_FILE}
 	#service amavis restart
 fi
 

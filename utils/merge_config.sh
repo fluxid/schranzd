@@ -29,7 +29,7 @@ merge() {
 	cat ${CONFIG_CACHE_PATH}*/$1 > ${CONFIG_PATH}$1
 }
 
-if [ ${DOMAIN_PATH} -nt ${DOMAIN_FILE} ]; then
+if [ ${DOMAIN_PATH} -nt ${AMAVIS_FILE} ]; then
 	cat ${DOMAIN_PATH}* | awk "$AWK_SCRIPT" > ${AMAVIS_FILE}
 	#service amavis restart
 fi

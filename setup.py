@@ -8,9 +8,11 @@ setup(
     author = 'Tomasz Kowalczyk', 
     packages = (
         'schranz',
+        'schranz.modules',
     ),
     package_dir = {
-        'schranz': 'src/schranz'
+        'schranz': 'src/schranz',
+        'schranz.modules': 'src/schranz/modules',
     },
     data_files = (
         ('/etc/init.d', ('rc/ubuntu/schranzd',)),

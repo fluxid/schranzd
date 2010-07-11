@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import getopt
 import os
 import signal
 import sys
@@ -10,29 +11,56 @@ from schranz.util import get_group, get_user
 from schranz.daemon import SchranzDaemon
 
 def main(argv):
+    shortargs = 'ds:p:'
+    longargs = ('daemon', 'socket=', 'pidfile=')
+
     try:
-        pid = os.fork()
-        if pid:
-            sys.exit(0)
-    except Exception, e:
-        print >>sys.stderr, 'Could not daemonize'
+        opts, _ = getopt.getopt(sys.argv[1:], shortargs, longargs)
+    except getopt.error:
+        print >> sys.stderr, 'schranzd [-d|--daemon [-p|--pidfile=FILE]] [-s|--socket=FILE]'
         return 1
 
-    f = open('/var/run/schranz/schranzd.pid', 'w')
-    f.write(str(os.getpid()))
-    f.close()
+    pidfile = '/var/run/schranz/schranzd.pid'
+    socket_file = '/var/run/schranz/schranz.sock'
+    daemonize = False
+
+    for o, v in opts:
+        # optparse sucks cock, hard
+        daemonize = o in ('-d', '--daemon')
+        if o in ('-s', '--socket'):
+            pidfile = v
+        if o in ('-p', '--pidfile'):
+            socket_file = v
     
     try:
         os.setgid(get_group(name = 'schranz').gr_gid)
     except:
-        print >>sys.stderr, 'Cannot change group. Daemon will run as group %s.' % get_group(gid = os.getgid()).gr_name
+        print >> sys.stderr, 'Cannot change group. Daemon will run as group %s.' % get_group(gid = os.getgid()).gr_name
 
     try:
         os.setuid(get_user(name = 'schranz').pw_uid)
     except:
-        print >>sys.stderr, 'Cannot change user. Daemon will run as user %s.' % get_user(uid = os.getuid()).pw_name
+        print >> sys.stderr, 'Cannot change user. Daemon will run as user %s.' % get_user(uid = os.getuid()).pw_name
 
-    daemon = SchranzDaemon()
+    if daemonize:
+        try:
+            pid = os.fork()
+            if pid:
+                sys.exit(0)
+        except OSError, e:
+            print >> sys.stderr, 'Could not daemonize: %s' % os.strerror(e.errno)
+            return 1
+
+        f = open(pidfile, 'w')
+        try:
+            f.write(str(os.getpid()))
+        except EnvironmentError, e:
+            print >> sys.stderr, 'Could not write pidfile: %s' % os.strerror(e.errno)
+            return 1
+        finally:
+            f.close()
+
+    daemon = SchranzDaemon(socket_file = socket_file)
     
     def handler(i, j):
         daemon.stop()

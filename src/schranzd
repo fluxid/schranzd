@@ -62,7 +62,8 @@ def main(argv):
         finally:
             f.close()
 
-    syslog.openlog(logopt=syslog.LOG_PID, facility=syslog.LOG_DAEMON)
+    syslog.openlog('schranzd', syslog.LOG_PID, syslog.LOG_DAEMON)
+    syslog.setlogmask(syslog.LOG_UPTO(syslog.LOG_INFO))
 
     daemon = SchranzDaemon(socket_file = socket_file)
     

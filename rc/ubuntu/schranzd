@@ -24,7 +24,7 @@ set -e
 
 START="--start --quiet --pidfile ${DIR}${NAME}.pid --name ${DAEMONNAME} --startas ${DAEMON}"
 STOP="--stop --quiet --pidfile ${DIR}${NAME}.pid --name ${DAEMONNAME}"
-PARAMS=
+PARAMS="-d"
 
 case "$1" in
   start)

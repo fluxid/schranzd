@@ -2,14 +2,16 @@
 # -*- coding: utf-8 -*-
 
 import os.path
-import re
 import subprocess
+
+from schranz.util import SimpleParser, ParseError
 
 MAILDIR_PATH = '~/schranz/mail'
 CONFIG_FILE = 'schranz/mailaccounts'
 
-SCHRANZ_DIR = '/var/lib/schranz/mail/'
-DOMAIN_PATH = '/var/lib/schranz/mail_domains/'
+SCHRANZ_PATH = '/var/lib/schranz/'
+CONFIG_CACHE_PATH = SCHRANZ_PATH + 'mail_cache/'
+DOMAIN_PATH = SCHRANZ_PATH + 'mail_domains/'
 
 ACCOUNT_FILE = 'account_maps'
 ALIAS_FILE = 'alias_maps'
@@ -24,52 +26,9 @@ FORBIDDEN_USERS = ('abuse', 'postmaster')
 DOVECOTPW_BIN = '/usr/sbin/dovecotpw'
 
 
-RE_WS = re.compile('\s+')
-
-class ConfigError(Exception):
-    pass
-
-class ParseError(Exception):
-    pass
-
-class SimpleParser(object):
-    def parse(self, f):
-        fp = open(f, 'r')
-        n = 0
-        self._f = f
-        self._n = n
-        for line in fp.xreadlines():
-            n += 1
-            line = line.strip()
-            if not line or line[0] in ('#', ';'):
-                continue
-            params = RE_WS.split(line)
-            command = params.pop(0)
-            command = command.lower()
-            to_call = getattr(self, 'cmd_'+command, None)
-            self._n = n
-            if to_call:
-                try:
-                    to_call(*params)
-                except ParseError, e:
-                    self.error(e)
-            else:
-                self.error('Unknown statement %s' % command)
-
-        del self._f
-        del self._n
-
-    def error(self, description):
-        raise NotImplementedError
-
-    def format_error(self, description):
-        if hasattr(self, '_f'):
-            return 'In file %s at line %d: %s' % (self._f, self._n, description)
-        return description
-
-
-class UserMailConfigParser(SimpleParser):
+class MailConfigParser(SimpleParser):
     def __init__(self, domains):
+        super(MailConfigParser).__init__(self)
         self.catchalls = dict() # domain: account
         self.aliases = dict() # alias: account
         self.account_pass = dict() # account: pass
@@ -95,10 +54,8 @@ class UserMailConfigParser(SimpleParser):
         if domain not in self.domains:
             raise ParseError('Unknown domain "%s"' % domain)
 
-        return user, domain
-
     def cmd_account(self, account, password):
-        user, domain = self.parse_account(account)
+        self.parse_account(account)
 
         if account in self.aliases:
             del self.aliases[account]
@@ -107,7 +64,7 @@ class UserMailConfigParser(SimpleParser):
         self.account_pass[account] = password
 
     def cmd_alias(self, account1, account2):
-        user, domain = self.parse_account(account1)
+        self.parse_account(account1)
 
         if account1 in self.accounts:
             raise ParseError('Account "%s" already exists' % account1)
@@ -156,33 +113,42 @@ def mail_reload(context, arguments):
         f.close()
 
     if not errors:
-        parser = UserMailConfigParser(domains)
+        parser = MailConfigParser(domains)
         parser.parse(config_fp)
         # must use +=, or else we would have to replace errors from context
         errors += parser.errors
 
-    passwords = dict()
-    for key, value in parser.account_pass.iteritems():
-        try:
-            p = subprocess.Popen([DOVECOTPW_BIN, '-p', value], shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
-        except:
-            errors.append('Error when hashing password for account "%s"' % key)
-            continue
-        
-        pstdout, pstderr = p.communicate()
-        value = pstdout.strip()
-        passwords[key] = value
+    if not errors:
+        passwords = dict()
+        for key, value in parser.account_pass.iteritems():
+            try:
+                p = subprocess.Popen([DOVECOTPW_BIN, '-p', value], shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
+            except:
+                errors.append('Error when hashing password for account "%s"' % key)
+                continue
+            
+            pstdout, _ = p.communicate()
+            value = pstdout.strip()
+            passwords[key] = value
 
-    if errors:
-        return
-    
-    udir = os.path.join(SCHRANZ_DIR, user.pw_name)
+    if not errors:
+        gen_config(
+            user,
+            domains,
+            parser.accounts,
+            parser.aliases,
+            parser.catchalls,
+            passwords,
+        )
+
+def gen_config(user, domains, accounts, aliases, catchalls, passwords):
+    udir = os.path.join(CONFIG_CACHE_PATH, user.pw_name)
     if not os.path.exists(udir):
-        os.mkdir(udir)
+        os.makedirs(udir)
 
     account_fp = os.path.join(udir, ACCOUNT_FILE)
     f = open(account_fp, 'w')
-    for value in parser.accounts:
+    for value in accounts:
         f.write('%s %s\n' % (value, value))
     f.close()
 
@@ -191,13 +157,13 @@ def mail_reload(context, arguments):
     for value in domains:
         f.write('abuse@%s %s\n' % (value, DEFAULT_ABUSE))
         f.write('postmaster@%s %s\n' % (value, DEFAULT_POSTMASTER))
-    for key, value in parser.aliases.iteritems():
+    for key, value in aliases.iteritems():
         f.write('%s %s\n' % (key, value))
     f.close()
 
     catchall_fp = os.path.join(udir, CATCHALL_FILE)
     f = open(catchall_fp, 'w')
-    for key, value in parser.catchalls.iteritems():
+    for key, value in catchalls.iteritems():
         f.write('@%s %s\n' % (key, value))
     f.close()
 
@@ -209,7 +175,7 @@ def mail_reload(context, arguments):
 
     passwd_fp = os.path.join(udir, PASSWD_FILE)
     f = open(passwd_fp, 'w')
-    for value in parser.accounts:
+    for value in accounts:
         f.write('%s:%s:%d:%d::%s::userdb_mail=maildir:%s\n' % (
             value,
             passwords[value],

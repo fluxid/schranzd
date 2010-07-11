@@ -53,7 +53,8 @@ class SchranzDaemon(object):
                 try:
                     process_command(context, data)
                 except:
-                    import traceback; traceback.print_exc()
+                    import traceback
+                    traceback.print_exc()
                     errors.append('Critical error while executing command.')
 
             jresponse = json.dumps(response)

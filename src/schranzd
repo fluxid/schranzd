@@ -1,13 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import signal
 import sys
 from traceback import print_exc
 
+from schranz.util import get_group, get_user
 from schranz.daemon import SchranzDaemon
 
 def main(argv):
+    try:
+        os.setgid(get_group(name = 'schranz').gr_gid)
+    except:
+        print 'Cannot change group. Daemon will run as group %s.' % get_group(gid = os.getgid()).gr_name
+
+    try:
+        os.setuid(get_user(name = 'schranz').pw_uid)
+    except:
+        print 'Cannot change user. Daemon will run as user %s.' % get_user(uid = os.getuid()).pw_name
+
     daemon = SchranzDaemon()
     
     def handler(i, j):

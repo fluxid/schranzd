@@ -1,0 +1,74 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          schranzd
+# Required-Start:    $syslog $network $local_fs
+# Required-Stop:     $syslog $network $local_fs 
+# Should-Start:      
+# Should-Stop:       
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Starts schranzd
+# Description:       Starts Schranz Daemon
+### END INIT INFO
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/usr/sbin/schranzd
+NAME=schranzd
+DAEMONNAME=schranzd
+DIR='/var/run/schranz/'
+DESC="Schranz Daemon"
+
+test -f ${DAEMON} || exit 0
+
+set -e
+
+START="--start --quiet --pidfile ${DIR}${NAME}.pid --name ${DAEMONNAME} --startas ${DAEMON}"
+STOP="--stop --quiet --pidfile ${DIR}${NAME}.pid --name ${DAEMONNAME}"
+PARAMS=
+
+case "$1" in
+  start)
+	echo -n "Starting $DESC: "
+	if [ ! -d ${DIR} ]; then
+		mkdir -p ${DIR}
+		chown "schranz:schranz" ${DIR}
+	fi
+	if start-stop-daemon ${START} -- ${PARAMS} start >/dev/null ; then
+		echo "schranzd."
+	else
+		if start-stop-daemon --test ${START} >/dev/null 2>&1; then
+			echo "(failed)."
+			exit 1
+		else
+			echo "(already running)."
+			exit 0
+		fi
+	fi
+	;;
+  stop)
+	echo -n "Stopping $DESC: "
+	if start-stop-daemon ${STOP} --retry 10 >/dev/null ; then
+		echo "schranzd."
+	else
+		if start-stop-daemon --test ${START} >/dev/null 2>&1; then
+			echo "(not running)."
+			exit 0
+		else
+			echo "(failed)."
+			exit 1
+		fi
+	fi
+	;;
+  restart|force-reload)
+	$0 stop
+	exec $0 start
+	;;
+  *)
+	N=/etc/init.d/schranzd
+	#echo "Usage: $N {start|stop|restart|reload|force-reload|debug}" >&2
+	echo "Usage: $N {start|stop|restart|force-reload}" >&2
+	exit 1
+	;;
+esac
+
+exit 0

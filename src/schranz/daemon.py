@@ -11,7 +11,7 @@ from schranz import util
 from schranz.modules import process_command
 
 class SchranzDaemon(object):
-    def __init__(self, socket_file='schranzd.sock'):
+    def __init__(self, socket_file='/var/run/schranz/schranz.sock'):
         self.queue = []
         self.workers = []
         self.running = False

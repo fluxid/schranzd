@@ -3,7 +3,7 @@
 import json
 import socket
 
-def execute_command(module, command, arguments = None, socket_file='schranzd.sock'):
+def execute_command(module, command, arguments = None, socket_file='/var/run/schranz/schranz.sock'):
     data = dict(
         module = module,
         command = command,
@@ -12,7 +12,7 @@ def execute_command(module, command, arguments = None, socket_file='schranzd.soc
     jdata = json.dumps(data)
 
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.connect('schranzd.sock')
+    sock.connect(socket_file)
     sock.send(jdata)
     jreceived = sock.recv(8192)
     sock.close()

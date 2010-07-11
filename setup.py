@@ -16,6 +16,7 @@ setup(
     },
     data_files = (
         ('/etc/init.d', ('rc/ubuntu/schranzd',)),
+        ('/var/lib/schranz', ('utils/merge_config.sh',)),
     ),
     scripts = (
         'src/sch',

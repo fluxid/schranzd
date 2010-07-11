@@ -10,18 +10,17 @@ from schranz.util import get_group, get_user
 from schranz.daemon import SchranzDaemon
 
 def main(argv):
-    pid = None
     try:
         pid = os.fork()
+        if pid:
+            sys.exit(0)
     except Exception, e:
         print >>sys.stderr, 'Could not daemonize'
         return 1
-    finally:
-        if pid:
-            f = open('/var/run/schranz/schranz.pid', 'w')
-            f.write(str(os.getpid()))
-            f.close()
-            sys.exit(0)
+
+    f = open('/var/run/schranz/schranz.pid', 'w')
+    f.write(str(os.getpid()))
+    f.close()
     
     try:
         os.setgid(get_group(name = 'schranz').gr_gid)

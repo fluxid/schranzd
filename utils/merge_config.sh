@@ -6,17 +6,19 @@ DOMAIN_PATH="${BASE_PATH}domains/"
 CONFIG_PATH="${BASE_PATH}config/"
 AMAVIS_FILE="/etc/amavis/conf.d/90-schranz"
 
+POSTMAP="/usr/sbin/postmap"
+
 AWK_SCRIPT='
 BEGIN {
 	ORS="";
 	print "@local_domains_acl = ( ";
 }
 {
+	sub(/^[[:space:]]+|[[:space:]]+$/, "");
 	if ($0 !~ /^[[:space:]]*$|^[#;]/) {
 		if (notfirst) {
 			print ", ";
 		}
-		sub(/^[[:space:]]+|[[:space:]]+$/, "");
 		print "\"" $0 "\"";
 		notfirst = 1;
 	}
@@ -39,7 +41,7 @@ if [ ${CONFIG_CACHE_PATH} -nt ${CONFIG_PATH} ]; then
 
 	for f in ${MAPS}; do
 		merge $f
-		postmap "hash:${CONFIG_PATH}${f}"
+		${POSTMAP} "hash:${CONFIG_PATH}${f}"
 	done
 
 	merge passwd

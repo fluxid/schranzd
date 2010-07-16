@@ -32,11 +32,14 @@ merge() {
 }
 
 if [ ${DOMAIN_PATH} -nt ${AMAVIS_FILE} ]; then
+	echo "Reloading amavis config"
 	cat ${DOMAIN_PATH}* | awk "$AWK_SCRIPT" > ${AMAVIS_FILE}
-	#service amavis restart
+	service amavis restart 2>&1 > /dev/null
+	touch  ${AMAVIS_FILE}
 fi
 
 if [ ${CONFIG_CACHE_PATH} -nt ${CONFIG_PATH} ]; then
+	echo "Reloading postfix and dovecot config"
 	MAPS="account_maps alias_maps catchall_maps domain_maps"
 
 	for f in ${MAPS}; do
@@ -45,6 +48,7 @@ if [ ${CONFIG_CACHE_PATH} -nt ${CONFIG_PATH} ]; then
 	done
 
 	merge passwd
-	#service postfix reload
-	#service dovecot reload
+	service postfix reload 2>&1 > /dev/null
+	service dovecot reload 2>&1 > /dev/null
+	touch ${CONFIG_PATH}
 fi

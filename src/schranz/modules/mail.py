@@ -185,6 +185,8 @@ def gen_config(user, domains, accounts, aliases, catchalls, passwords):
         ))
     f.close()
 
+    os.utime(udir, None)
+
 MOD_NAME = 'mail'
 MOD_COMMANDS = {
     'reload': mail_reload,

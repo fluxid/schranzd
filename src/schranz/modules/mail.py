@@ -186,6 +186,7 @@ def gen_config(user, domains, accounts, aliases, catchalls, passwords):
     f.close()
 
     os.utime(udir, None)
+    os.utime(CONFIG_CACHE_PATH, None)
 
 MOD_NAME = 'mail'
 MOD_COMMANDS = {
